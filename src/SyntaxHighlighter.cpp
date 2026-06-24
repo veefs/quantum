@@ -21,6 +21,9 @@ void MyHighlighter::highlightBlock(const QString &text) {
     QTextCharFormat watchFormat;
     watchFormat.setForeground(QColor(255, 184, 108, 255)); // orange - watch/unwatch
 
+    QTextCharFormat monteFormat;
+    monteFormat.setForeground(QColor(189, 147, 249, 255)); // purple - monte
+
     QRegularExpression intPattern("\\bdisplay\\b");
     QRegularExpressionMatchIterator intIt = intPattern.globalMatch(text);
     while (intIt.hasNext()) {
@@ -54,6 +57,13 @@ void MyHighlighter::highlightBlock(const QString &text) {
     while (watchIt.hasNext()) {
         QRegularExpressionMatch match = watchIt.next();
         setFormat(match.capturedStart(), match.capturedLength(), watchFormat);
+    }
+
+    QRegularExpression montePattern("\\bmonte\\b");
+    QRegularExpressionMatchIterator monteIt = montePattern.globalMatch(text);
+    while (monteIt.hasNext()) {
+        QRegularExpressionMatch match = monteIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), monteFormat);
     }
 }
 

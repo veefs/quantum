@@ -45,6 +45,7 @@ void CommandHandler::execute(const QString &line) {
     else if (command == "range") handleRange(args);
     else if (command == "watch") handleWatch(args);
     else if (command == "unwatch") handleUnwatch(args);
+    else if (command == "monte") handleMonte(args);
     else handleUnknown(command);
 }
 
@@ -89,6 +90,19 @@ void CommandHandler::loadWatchImage(QLabel *targetLabel, const QString &ticker) 
 
     QPixmap pixmap;
     pixmap.load(imagePath);
+
+    if (pixmap.isNull()) {
+        qDebug() << "Failed to load image:" << imagePath;
+        targetLabel->setText("Failed to load chart");
+    } else {
+        targetLabel->setPixmap(pixmap);
+        console->appendPlainText("Loaded chart image: " + imagePath);
+    }
+}
+
+void CommandHandler::loadMonteImage(QLabel *targetLabel, const QString &tickerLabel) {
+    QString imagePath = "resources/" + tickerLabel + "_monte.png";
+    QPixmap pixmap(imagePath);
 
     if (pixmap.isNull()) {
         qDebug() << "Failed to load image:" << imagePath;
@@ -218,6 +232,66 @@ void CommandHandler::onWatchProcessFinished(int /*exitCode*/, QProcess::ExitStat
 
     console->appendPlainText("[DATA/WATCH] refreshed " + watchTicker);
     loadWatchImage(chartLabel, watchTicker);
+}
+
+void CommandHandler::handleMonte(const QStringList &args) {
+    if (args.isEmpty()) {
+        console->appendPlainText("[ERROR] MONTE requires at least 2 tickers, e.g. monte(AMZN+AAPL)");
+        return;
+    }
+
+    // First arg is a '+'-joined ticker list (e.g. "AMZN+AAPL+MSFT") so it
+    // survives the comma-split used for the rest of the args.
+    QString tickerArg = args[0];
+    QStringList tickers = tickerArg.split('+', Qt::SkipEmptyParts);
+    for (QString &t : tickers) t = t.trimmed();
+
+    if (tickers.size() < 2) {
+        console->appendPlainText("[ERROR] MONTE needs at least 2 tickers joined with '+', e.g. monte(AMZN+AAPL)");
+        return;
+    }
+
+    // Everything after the ticker list is forwarded as-is: key=value pairs
+    // like days=200, sims=1000, alpha=1, dof=8, lookback=500, seed=42.
+    // A weights= option needs multiple comma-separated numbers, which
+    // would otherwise be torn apart by splitArgs' comma-splitting; rejoin
+    // any args that look like a continuation of weights=... back together.
+    QStringList options;
+    for (int i = 1; i < args.size(); ++i) {
+        if (!options.isEmpty() && options.last().startsWith("weights=") &&
+            !args[i].contains('=')) {
+            options.last() += "," + args[i];
+        } else {
+            options << args[i];
+        }
+    }
+
+    QString tickerCsv = tickers.join(",");
+    QString tickerLabel = tickers.join("_");
+
+    QString optionSummary = options.isEmpty() ? "defaults" : options.join(", ");
+    console->appendPlainText("[FUNCTION/MONTE] simulating " + tickerArg.replace('+', " + ") +
+                              " (" + optionSummary + ")");
+
+    QStringList scriptArgs;
+    scriptArgs << tickerCsv;
+    scriptArgs += options;
+
+    QProcess process;
+    process.start("python", QStringList() << "scripts/montecarlo.py" << scriptArgs);
+    process.waitForFinished(30000);
+
+    QString output = process.readAllStandardOutput();
+    QString errorOutput = process.readAllStandardError();
+
+    if (!errorOutput.isEmpty()) {
+        qDebug() << "Python error:" << errorOutput;
+        console->appendPlainText("[ERROR] MONTE failed: " + errorOutput);
+        return;
+    }
+
+    console->appendPlainText("[DATA/MONTE] " + output);
+    loadMonteImage(compareLabel, tickerLabel);
 }
 
 void CommandHandler::handleUnknown(const QString &command) {

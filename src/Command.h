@@ -63,6 +63,7 @@ private:
     void handleRange(const QStringList &args);
     void handleWatch(const QStringList &args);
     void handleUnwatch(const QStringList &args);
+    void handleMonte(const QStringList &args);
     void handleUnknown(const QString &command);
 
     // Shared helper: runs fetchPrice.py with given args, returns stdout.
@@ -76,4 +77,7 @@ private:
 
     // Shared helper: loads "resources/{ticker}_watch.png" into a label.
     void loadWatchImage(QLabel *targetLabel, const QString &ticker);
+
+    // Shared helper: loads "resources/{tickers joined by _}_monte.png" into a label.
+    void loadMonteImage(QLabel *targetLabel, const QString &tickerLabel);
 };

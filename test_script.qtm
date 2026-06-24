@@ -1,1 +1,3 @@
-watch(AMZN, 5, 20)
+monte(AMZN+AAPL, days=200, sims=1000, alpha=1, seed=42)
+load(AMZN, 6mo)
+display()

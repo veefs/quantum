@@ -60,6 +60,31 @@ Stops the live chart.
 unwatch()
 ```
 
+## monte(TICKER+TICKER, options...)
+
+Runs a Monte Carlo simulation on a portfolio of 2+ tickers and prints
+VaR/CVaR estimates (historical, normal, t-dist, and Monte Carlo) to the
+console. Shows the simulation paths in the right chart panel. Tickers are
+joined with `+`. Everything after that is optional `key=value` options,
+in any order:
+
+| Option       | Default | Meaning                                    |
+|--------------|---------|---------------------------------------------|
+| `days`       | 100     | simulation horizon, in trading days          |
+| `sims`       | 400     | number of Monte Carlo paths                  |
+| `investment` | 10000   | starting portfolio value                     |
+| `alpha`      | 5       | confidence level for VaR/CVaR, in percent (5 = 95% CI) |
+| `dof`        | 6       | degrees of freedom for the t-distribution model |
+| `lookback`   | 800     | days of historical data used for return stats |
+| `seed`       | random  | random seed, for reproducible runs           |
+| `weights`    | random  | manual portfolio weights, comma-separated, one per ticker (need not sum to 1) |
+
+```
+monte(AMZN+AAPL)
+monte(AMZN+AAPL+MSFT, days=250, sims=1000, alpha=1, seed=42)
+monte(AMZN+AAPL, weights=0.7, 0.3)
+```
+
 ---
 
 ## Colors
@@ -72,3 +97,4 @@ unwatch()
 | range      | red    |
 | watch      | orange |
 | unwatch    | orange |
+| monte      | purple |
