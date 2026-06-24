@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "SyntaxHighlighter.h"
+#include "CodeEditor.h"
 #include <QPushButton>
 #include <QDebug>
 #include <QFile>
@@ -10,7 +11,7 @@
 MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QString &path) : QMainWindow(parent) {
     filePath = path;
     setWindowTitle("Quantum");
-    resize(2000, 1200);
+    resize(2400, 1200);
 
     setStyleSheet("background-color: #282a36;");
 
@@ -22,12 +23,12 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
     logoLabel->move(0, 5);
     logoLabel->setStyleSheet("background-color: transparent;");
 
-    editor = new QPlainTextEdit(initialText, this);
+    editor = new CodeEditor(initialText, this);
     QFont font = editor->font();
     font.setPointSize(16);
     editor->setFont(font);
     editor->resize(800, 800);
-    editor->move(0, 50);
+    editor->move(0, 80);
     editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     editor->setStyleSheet(
@@ -44,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
     QFont consoleFont = console->font();
     consoleFont.setPointSize(16);
     console->setFont(consoleFont);
-    console->resize(2000, 400);
+    console->resize(2400, 400);
     console->move(5, 850);
     console->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     console->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -69,17 +70,22 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
 
     QString buttonStyle =
         "QPushButton {"
-        "  background-color: #44475a;"
-        "  color: #f8f8f2;"
-        "  border: none;"
-        "  border-radius: 4px;"
+        "  background-color: transparent;"
+        "  border: 1px solid #44475a;"
+        "  border-radius: 6px;"
+        "  outline: none;"
+        "  padding: 0px;"
         "}"
         "QPushButton:hover {"
-        "  background-color: #6272a4;"
+        "  background-color: transparent;"
+        "  border: 1px solid #6272a4;"
         "}"
         "QPushButton:pressed {"
-        "  background-color: #50fa7b;"
-        "  color: #282a36;"
+        "  background-color: transparent;"
+        "  border: 1px solid #50fa7b;"
+        "}"
+        "QPushButton:focus {"
+        "  outline: none;"
         "}";
 
     run->setStyleSheet(buttonStyle);
@@ -88,25 +94,47 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
     help->setStyleSheet(buttonStyle);
     clear->setStyleSheet(buttonStyle);
 
+    run->setFlat(true);
+    save->setFlat(true);
+    refresh->setFlat(true);
+    help->setFlat(true);
+    clear->setFlat(true);
+
+    run->setIcon(QIcon("resources/buttons/run.png"));
+    run->setIconSize(QSize(40, 40));
+    run->setText("");
+
+    save->setIcon(QIcon("resources/buttons/save.png"));
+    save->setIconSize(QSize(40, 40));
+    save->setText("");
+
+    refresh->setIcon(QIcon("resources/buttons/refresh.png"));
+    refresh->setIconSize(QSize(40, 40));
+    refresh->setText("");
+
+    clear->setIcon(QIcon("resources/buttons/clear.png"));
+    clear->setIconSize(QSize(40, 40));
+    clear->setText("");
+
+    help->setIcon(QIcon("resources/buttons/help.png"));
+    help->setIconSize(QSize(40, 40));
+    help->setText("");
+
     chartLabel = new QLabel(this);
-    chartLabel->resize(580, 800);
-    chartLabel->move(810, 50);
+    chartLabel->resize(780, 750);
+    chartLabel->move(810, 80);
     chartLabel->setScaledContents(true);
-    chartLabel->setStyleSheet("background-color: #21222c; border: 1px solid #44475a; border-radius: 4px; color: #6272a4;");
-    chartLabel->setAlignment(Qt::AlignCenter);
-    chartLabel->setText("No chart loaded");
+    chartLabel->setStyleSheet("background-color: #21222c; border: 1px solid #44475a; border-radius: 4px;");
 
     compareLabel = new QLabel(this);
-    compareLabel->resize(580, 800);
-    compareLabel->move(1400, 50);
+    compareLabel->resize(780, 750);
+    compareLabel->move(1600, 80);
     compareLabel->setScaledContents(true);
-    compareLabel->setStyleSheet("background-color: #21222c; border: 1px solid #44475a; border-radius: 4px; color: #6272a4;");
-    compareLabel->setAlignment(Qt::AlignCenter);
-    compareLabel->setText("No chart loaded");
+    compareLabel->setStyleSheet("background-color: #21222c; border: 1px solid #44475a; border-radius: 4px;");
 
-    // RUN BUTTON - shifted right to make room for logo
-    run->resize(100, 50);
-    run->move(130, 0);
+    // RUN BUTTON - shifted right to make room for logo, resized for icon-only
+    run->resize(60, 60);
+    run->move(140, 0);
     connect(run, &QPushButton::clicked, this, [this]() {
 
         console->appendPlainText("[LOAD] attempting to run: " + filePath);
@@ -176,7 +204,7 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
                         console->appendPlainText("[FUNCTION/DISPLAY] running scripts/fetchPrice.py " + currentTicker + " -d");
                     }
 
-                    QString imagePath = currentTicker + "_history.png";
+                    QString imagePath = "resources/" + currentTicker + "_history.png";
                     QPixmap pixmap(imagePath);
                     if (pixmap.isNull()) {
                         qDebug() << "Failed to load image:" << imagePath;
@@ -210,7 +238,7 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
                         console->appendPlainText(output);
                     }
 
-                    QString imagePath = argument + "_history.png";
+                    QString imagePath = "resources/" + currentTicker + "_history.png";
                     QPixmap pixmap(imagePath);
                     if (pixmap.isNull()) {
                         qDebug() << "Failed to load image:" << imagePath;
@@ -233,8 +261,8 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
     });
 
     // SAVE BUTTON
-    save->resize(100, 50);
-    save->move(230, 0);
+    save->resize(60, 60);
+    save->move(220, 0);
     connect(save, &QPushButton::clicked, this, [this]() {
          QString saveText = editor->toPlainText();
          if (!filePath.isEmpty()) {
@@ -254,22 +282,22 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
     });
 
     // REFRESH BUTTON
-    refresh->resize(100, 50);
-    refresh->move(330, 0);
+    refresh->resize(60, 60);
+    refresh->move(300, 0);
     connect(refresh, &QPushButton::clicked, this, [this]() {
         qDebug() << "Refresh clicked";
 
     });
 
     // HELP BUTTON
-    help->resize(100, 50);
-    help->move(430, 0);
+    help->resize(60, 60);
+    help->move(380, 0);
     connect(help, &QPushButton::clicked, this, [this]() {
         qDebug() << "Help clicked";
     });
 
-    clear->resize(100, 50);
-    clear->move(530, 0);
+    clear->resize(60, 60);
+    clear->move(460, 0);
     connect(clear, &QPushButton::clicked, this, [this]() {
         console->setPlainText("");
     });

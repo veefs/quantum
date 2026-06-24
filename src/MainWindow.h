@@ -3,6 +3,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QLabel>
+#include "CodeEditor.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -10,7 +11,7 @@ public:
     MainWindow(QWidget *parent = nullptr, const QString &initialText = QString(), const QString &filePath = QString());
 
 private:
-    QPlainTextEdit *editor;
+    CodeEditor *editor;
     QPlainTextEdit *console;
     QPushButton *run;
     QPushButton *save;

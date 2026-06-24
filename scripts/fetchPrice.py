@@ -1,4 +1,5 @@
 import sys
+import os
 import yfinance as yf
 import matplotlib.pyplot as plt
 
@@ -25,6 +26,6 @@ if display_option == "-d":
     plt.legend()
     plt.tight_layout()
 
-    out_path = f"{ticker_symbol}_history.png"
+    os.makedirs("resources", exist_ok=True)
+    out_path = os.path.join("resources", f"{ticker_symbol}_history.png")
     plt.savefig(out_path, dpi=150)
-
