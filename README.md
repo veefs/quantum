@@ -5,7 +5,7 @@ language (`.qtm` files), hit Run, and get live charts, comparisons, and
 Monte Carlo risk simulations rendered straight into the editor - no
 Jupyter notebook required.
 
-![Quantum logo](resources/QST.png)
+![Quantum logo](/resources/qst.png)
 
 ## Why
 
