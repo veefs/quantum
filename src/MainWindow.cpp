@@ -134,7 +134,7 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
 
     commandHandler = new CommandHandler(console, chartLabel, compareLabel, this);
 
-    // RUN BUTTON 
+    // RUN BUTTON
     run->resize(60, 60);
     run->move(140, 0);
     connect(run, &QPushButton::clicked, this, [this]() {

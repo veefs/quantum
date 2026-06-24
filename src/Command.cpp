@@ -83,9 +83,7 @@ void CommandHandler::loadChartImage(QLabel *targetLabel, const QString &ticker, 
 void CommandHandler::loadWatchImage(QLabel *targetLabel, const QString &ticker) {
     QString imagePath = "resources/" + ticker + "_watch.png";
 
-    // QPixmap caches by file path internally (QPixmapCache). Since watch()
-    // overwrites this exact same path every tick, Qt can serve a stale
-    // cached copy instead of re-reading the freshly-written file from disk.
+    // QPixmapCache caches by path, so force a fresh read since this file gets overwritten each tick
     QPixmapCache::remove(imagePath);
 
     QPixmap pixmap;
@@ -203,12 +201,8 @@ void CommandHandler::handleUnwatch(const QStringList & /*args*/) {
     }
 }
 
-// Non-blocking: just kicks off the python process and returns immediately.
-// If a previous tick's process is somehow still running, skip this tick
-// rather than overlapping two runs against the same QProcess.
 void CommandHandler::onWatchTick() {
     if (watchProcess->state() != QProcess::NotRunning) {
-        qDebug() << "Watch tick skipped - previous run still in progress";
         return;
     }
 
@@ -219,8 +213,6 @@ void CommandHandler::onWatchTick() {
         << QString::number(watchWindowMinutes));
 }
 
-// Runs on the GUI thread, but only once the subprocess has already
-// finished in the background - nothing here blocks waiting for python.
 void CommandHandler::onWatchProcessFinished(int /*exitCode*/, QProcess::ExitStatus /*status*/) {
     QString errorOutput = watchProcess->readAllStandardError();
 
@@ -240,8 +232,7 @@ void CommandHandler::handleMonte(const QStringList &args) {
         return;
     }
 
-    // First arg is a '+'-joined ticker list (e.g. "AMZN+AAPL+MSFT") so it
-    // survives the comma-split used for the rest of the args.
+    // ticker list is '+'-joined so it survives the comma split above
     QString tickerArg = args[0];
     QStringList tickers = tickerArg.split('+', Qt::SkipEmptyParts);
     for (QString &t : tickers) t = t.trimmed();
@@ -251,11 +242,7 @@ void CommandHandler::handleMonte(const QStringList &args) {
         return;
     }
 
-    // Everything after the ticker list is forwarded as-is: key=value pairs
-    // like days=200, sims=1000, alpha=1, dof=8, lookback=500, seed=42.
-    // A weights= option needs multiple comma-separated numbers, which
-    // would otherwise be torn apart by splitArgs' comma-splitting; rejoin
-    // any args that look like a continuation of weights=... back together.
+    // weights=a,b,c contains commas, which the split above breaks apart - rejoin those pieces
     QStringList options;
     for (int i = 1; i < args.size(); ++i) {
         if (!options.isEmpty() && options.last().startsWith("weights=") &&
