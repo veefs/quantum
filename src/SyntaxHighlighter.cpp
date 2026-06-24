@@ -15,6 +15,12 @@ void MyHighlighter::highlightBlock(const QString &text) {
     QTextCharFormat contrastFormat;
     contrastFormat.setForeground(QColor(80, 250, 123, 255)); // green - compare
 
+    QTextCharFormat popFormat;
+    popFormat.setForeground(QColor(235, 45, 79, 255)); // red - range
+
+    QTextCharFormat watchFormat;
+    watchFormat.setForeground(QColor(255, 184, 108, 255)); // orange - watch/unwatch
+
     QRegularExpression intPattern("\\bdisplay\\b");
     QRegularExpressionMatchIterator intIt = intPattern.globalMatch(text);
     while (intIt.hasNext()) {
@@ -34,6 +40,20 @@ void MyHighlighter::highlightBlock(const QString &text) {
     while (inzIt.hasNext()) {
         QRegularExpressionMatch match = inzIt.next();
         setFormat(match.capturedStart(), match.capturedLength(), contrastFormat);
+    }
+
+    QRegularExpression popPattern("\\brange\\b");
+    QRegularExpressionMatchIterator infIt = popPattern.globalMatch(text);
+    while (infIt.hasNext()) {
+        QRegularExpressionMatch match = infIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), popFormat);
+    }
+
+    QRegularExpression watchPattern("\\b(un)?watch\\b");
+    QRegularExpressionMatchIterator watchIt = watchPattern.globalMatch(text);
+    while (watchIt.hasNext()) {
+        QRegularExpressionMatch match = watchIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), watchFormat);
     }
 }
 
@@ -55,6 +75,9 @@ void ConsoleHighlighter::highlightBlock(const QString &text) {
 
     QTextCharFormat dataFormat;
     dataFormat.setForeground(QColor(255, 184, 108, 255)); // orange - DATA
+
+    QTextCharFormat watchFormat;
+    watchFormat.setForeground(QColor(241, 250, 140, 255)); // yellow - WATCH/UNWATCH
 
     QRegularExpression functionPattern("\\bFUNCTION\\b");
     QRegularExpressionMatchIterator funcIt = functionPattern.globalMatch(text);
@@ -96,5 +119,12 @@ void ConsoleHighlighter::highlightBlock(const QString &text) {
     while (dataIt.hasNext()) {
         QRegularExpressionMatch match = dataIt.next();
         setFormat(match.capturedStart(), match.capturedLength(), dataFormat);
+    }
+
+    QRegularExpression watchPattern("\\b(UN)?WATCH\\b");
+    QRegularExpressionMatchIterator watchIt = watchPattern.globalMatch(text);
+    while (watchIt.hasNext()) {
+        QRegularExpressionMatch match = watchIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), watchFormat);
     }
 }

@@ -1,4 +1,1 @@
-load(AMZN)
-display()
-compare(AAPL)
-
+watch(AMZN, 5, 20)

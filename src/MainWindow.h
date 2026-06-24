@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include "CodeEditor.h"
+#include "Command.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -19,8 +20,8 @@ private:
     QPushButton *help;
     QPushButton *clear;
     QString filePath;
-    QString currentTicker;
     QLabel *chartLabel;
     QLabel *compareLabel;
     QLabel *logoLabel;
+    CommandHandler *commandHandler;
 };

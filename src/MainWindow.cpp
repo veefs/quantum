@@ -132,131 +132,23 @@ MainWindow::MainWindow(QWidget *parent, const QString &initialText, const QStrin
     compareLabel->setScaledContents(true);
     compareLabel->setStyleSheet("background-color: #21222c; border: 1px solid #44475a; border-radius: 4px;");
 
-    // RUN BUTTON - shifted right to make room for logo, resized for icon-only
+    commandHandler = new CommandHandler(console, chartLabel, compareLabel, this);
+
+    // RUN BUTTON 
     run->resize(60, 60);
     run->move(140, 0);
     connect(run, &QPushButton::clicked, this, [this]() {
-
         console->appendPlainText("[LOAD] attempting to run: " + filePath);
-
 
         QString scriptText = editor->toPlainText();
         QStringList lines = scriptText.split('\n');
 
-        bool load_triggered = false;
+        commandHandler->resetRunState();
 
         for (const QString &rawLine : lines) {
             QString line = rawLine.trimmed();
             if (line.isEmpty()) continue;
-
-            int openParen = line.indexOf('(');
-            int closeParen = line.lastIndexOf(')');
-
-            if (openParen == -1 || closeParen == -1 || closeParen < openParen) {
-                qDebug() << "Malformed line, skipping:" << line;
-                continue;
-            }
-
-            QString command = line.left(openParen).trimmed();
-            QString argument = line.mid(openParen + 1, closeParen - openParen - 1).trimmed();
-
-            if (command == "load") {
-                if (argument.isEmpty()) {
-
-                    console->appendPlainText("[ERROR] LOAD requires a ticker argument");
-
-                } else {
-                    load_triggered = true;
-                    currentTicker = argument;
-
-                    console->appendPlainText("[FUNCTION/LOAD] loading " + argument);
-
-                    QProcess process;
-                    process.start("python", QStringList() << "scripts/fetchPrice.py" << argument);
-                    process.waitForFinished();
-
-                    QString output = process.readAllStandardOutput();
-                    QString errorOutput = process.readAllStandardError();
-
-                    if (!errorOutput.isEmpty()) {
-                        qDebug() << "Python error:" << errorOutput;
-                    } else {
-                        console->appendPlainText("[DATA/LOAD] running script/fetchPrice.py " + argument);
-                        console->appendPlainText(output);
-                    }
-                }
-            }
-            else if (command == "display") {
-                if (load_triggered || !currentTicker.isEmpty()) {
-
-                    console->appendPlainText("[FUNCTION/DISPLAY] displaying: " +  currentTicker);
-
-                    QProcess process;
-                    process.start("python", QStringList() << "scripts/fetchPrice.py" << currentTicker << "-d");
-                    process.waitForFinished();
-
-                    QString output = process.readAllStandardOutput();
-                    QString errorOutput = process.readAllStandardError();
-
-                    if (!errorOutput.isEmpty()) {
-                        qDebug() << "Python error:" << errorOutput;
-                    } else {
-                        console->appendPlainText("[FUNCTION/DISPLAY] running scripts/fetchPrice.py " + currentTicker + " -d");
-                    }
-
-                    QString imagePath = "resources/" + currentTicker + "_history.png";
-                    QPixmap pixmap(imagePath);
-                    if (pixmap.isNull()) {
-                        qDebug() << "Failed to load image:" << imagePath;
-                        chartLabel->setText("Failed to load chart");
-                    } else {
-                        chartLabel->setPixmap(pixmap);
-                        console->appendPlainText("Loaded chart image: " + imagePath);
-                    }
-                } else {
-                    qDebug() << "ERROR: LOAD command not triggered";
-                }
-            }
-
-            else if (command == "compare") {
-                if (load_triggered || !currentTicker.isEmpty()) {
-
-                    console->appendPlainText("[FUNCTION/COMPARE] loaded:" + currentTicker + " vs. " + argument);
-
-
-                     QProcess process;
-                    process.start("python", QStringList() << "scripts/fetchPrice.py" << argument << "-d");
-                    process.waitForFinished();
-
-                    QString output = process.readAllStandardOutput();
-                    QString errorOutput = process.readAllStandardError();
-
-                    if (!errorOutput.isEmpty()) {
-                        qDebug() << "Python error:" << errorOutput;
-                    } else {
-                        console->appendPlainText("[DATA/COMPARE] script/fetchPrice.py " + argument + " -d");
-                        console->appendPlainText(output);
-                    }
-
-                    QString imagePath = "resources/" + currentTicker + "_history.png";
-                    QPixmap pixmap(imagePath);
-                    if (pixmap.isNull()) {
-                        qDebug() << "Failed to load image:" << imagePath;
-                        compareLabel->setText("Failed to load chart");
-                    } else {
-                        compareLabel->setPixmap(pixmap);
-                        qDebug() << "Loaded chart image:" << imagePath;
-                        console->appendPlainText("[FUNCTION/COMPARE] loaded image: " + imagePath);
-                    }
-
-                } else {
-                    qDebug() << "ERROR: LOAD command not triggered";
-                }
-            }
-
-            else {
-                qDebug() << "Unknown command:" << command;
-            }
+            commandHandler->execute(line);
         }
     });
 
