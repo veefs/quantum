@@ -1,0 +1,4 @@
+load(AMZN)
+display()
+compare(AAPL)
+

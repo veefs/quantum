@@ -15,6 +15,8 @@ Remove-Item src\moc_MainWindow.cpp -ErrorAction SilentlyContinue
   -LC:\Qt\6.11.1\mingw_64\lib `
   -lQt6Widgets -lQt6Core -lQt6Gui
 
+& .\main.exe test_script.qtm
+
 if ($LASTEXITCODE -eq 0) {
     Write-Host "BUILD SUCCEEDED" -ForegroundColor Green
 } else {

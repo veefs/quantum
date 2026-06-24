@@ -3,13 +3,17 @@
 #include <QTextCharFormat>
 
 MyHighlighter::MyHighlighter(QTextDocument *parent) : QSyntaxHighlighter(parent) {}
+ConsoleHighlighter::ConsoleHighlighter(QTextDocument *parent) : QSyntaxHighlighter(parent) {}
 
 void MyHighlighter::highlightBlock(const QString &text) {
     QTextCharFormat keywordFormat;
-    keywordFormat.setForeground(QColor(136, 57, 239, 255));
+    keywordFormat.setForeground(QColor(255, 121, 198, 255)); // pink - display
 
     QTextCharFormat preprocessorFormat;
-    preprocessorFormat.setForeground(QColor(4, 165, 229, 255));
+    preprocessorFormat.setForeground(QColor(139, 233, 253, 255)); // cyan - load
+
+    QTextCharFormat contrastFormat;
+    contrastFormat.setForeground(QColor(80, 250, 123, 255)); // green - compare
 
     QRegularExpression intPattern("\\bdisplay\\b");
     QRegularExpressionMatchIterator intIt = intPattern.globalMatch(text);
@@ -23,5 +27,74 @@ void MyHighlighter::highlightBlock(const QString &text) {
     while (incIt.hasNext()) {
         QRegularExpressionMatch match = incIt.next();
         setFormat(match.capturedStart(), match.capturedLength(), preprocessorFormat);
+    }
+
+    QRegularExpression contrastPattern("\\bcompare\\b");
+    QRegularExpressionMatchIterator inzIt = contrastPattern.globalMatch(text);
+    while (inzIt.hasNext()) {
+        QRegularExpressionMatch match = inzIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), contrastFormat);
+    }
+}
+
+void ConsoleHighlighter::highlightBlock(const QString &text) {
+    QTextCharFormat functionFormat;
+    functionFormat.setForeground(QColor(189, 147, 249, 255)); // purple - FUNCTION
+
+    QTextCharFormat slashFormat;
+    slashFormat.setForeground(QColor(98, 114, 164, 255)); // comment gray - /
+
+    QTextCharFormat keywordFormat;
+    keywordFormat.setForeground(QColor(255, 121, 198, 255)); // pink - DISPLAY
+
+    QTextCharFormat preprocessorFormat;
+    preprocessorFormat.setForeground(QColor(139, 233, 253, 255)); // cyan - LOAD
+
+    QTextCharFormat contrastFormat;
+    contrastFormat.setForeground(QColor(80, 250, 123, 255)); // green - COMPARE
+
+    QTextCharFormat dataFormat;
+    dataFormat.setForeground(QColor(255, 184, 108, 255)); // orange - DATA
+
+    QRegularExpression functionPattern("\\bFUNCTION\\b");
+    QRegularExpressionMatchIterator funcIt = functionPattern.globalMatch(text);
+    while (funcIt.hasNext()) {
+        QRegularExpressionMatch match = funcIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), functionFormat);
+    }
+
+    QRegularExpression slashPattern("/");
+    QRegularExpressionMatchIterator slashIt = slashPattern.globalMatch(text);
+    while (slashIt.hasNext()) {
+        QRegularExpressionMatch match = slashIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), slashFormat);
+    }
+
+    QRegularExpression displayPattern("\\bDISPLAY\\b");
+    QRegularExpressionMatchIterator dispIt = displayPattern.globalMatch(text);
+    while (dispIt.hasNext()) {
+        QRegularExpressionMatch match = dispIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), keywordFormat);
+    }
+
+    QRegularExpression loadPattern("\\bLOAD\\b");
+    QRegularExpressionMatchIterator loadIt = loadPattern.globalMatch(text);
+    while (loadIt.hasNext()) {
+        QRegularExpressionMatch match = loadIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), preprocessorFormat);
+    }
+
+    QRegularExpression comparePattern("\\bCOMPARE\\b");
+    QRegularExpressionMatchIterator compIt = comparePattern.globalMatch(text);
+    while (compIt.hasNext()) {
+        QRegularExpressionMatch match = compIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), contrastFormat);
+    }
+
+    QRegularExpression dataPattern("\\bDATA\\b");
+    QRegularExpressionMatchIterator dataIt = dataPattern.globalMatch(text);
+    while (dataIt.hasNext()) {
+        QRegularExpressionMatch match = dataIt.next();
+        setFormat(match.capturedStart(), match.capturedLength(), dataFormat);
     }
 }

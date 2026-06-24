@@ -9,3 +9,11 @@ public:
 protected:
     void highlightBlock(const QString &text) override;
 };
+
+class ConsoleHighlighter : public QSyntaxHighlighter {
+public:
+    ConsoleHighlighter(QTextDocument *parent);
+
+protected:
+    void highlightBlock(const QString &text) override;
+};

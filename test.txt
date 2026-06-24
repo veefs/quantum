@@ -1,5 +1,0 @@
-Look at the syntax highlighting!
-
-display
-load
-
