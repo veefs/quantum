@@ -3,6 +3,15 @@
 #include <QPixmap>
 #include <QPixmapCache>
 #include <QDebug>
+#include <QCoreApplication>
+#include <QFile>
+
+// Prefer the Python runtime bundled beside the executable; fall back to
+// whatever "python" resolves to on PATH (useful for dev machines).
+static QString pythonExe() {
+    QString bundled = QCoreApplication::applicationDirPath() + "/python/python.exe";
+    return QFile::exists(bundled) ? bundled : "python";
+}
 
 CommandHandler::CommandHandler(QPlainTextEdit *console, QLabel *chartLabel, QLabel *compareLabel, QObject *parent)
     : QObject(parent), console(console), chartLabel(chartLabel), compareLabel(compareLabel) {
@@ -51,7 +60,7 @@ void CommandHandler::execute(const QString &line) {
 
 QString CommandHandler::runFetchScript(const QStringList &scriptArgs, const QString &logPrefix) {
     QProcess process;
-    process.start("python", QStringList() << "scripts/fetchPrice.py" << scriptArgs);
+    process.start(pythonExe(), QStringList() << "scripts/fetchPrice.py" << scriptArgs);
     process.waitForFinished();
 
     QString output = process.readAllStandardOutput();
@@ -207,7 +216,7 @@ void CommandHandler::onWatchTick() {
     }
 
     console->appendPlainText("[FUNCTION/WATCH] refreshing " + watchTicker);
-    watchProcess->start("python", QStringList()
+    watchProcess->start(pythonExe(), QStringList()
         << "scripts/watchPrice.py"
         << watchTicker
         << QString::number(watchWindowMinutes));
@@ -265,7 +274,7 @@ void CommandHandler::handleMonte(const QStringList &args) {
     scriptArgs += options;
 
     QProcess process;
-    process.start("python", QStringList() << "scripts/montecarlo.py" << scriptArgs);
+    process.start(pythonExe(), QStringList() << "scripts/montecarlo.py" << scriptArgs);
     process.waitForFinished(30000);
 
     QString output = process.readAllStandardOutput();

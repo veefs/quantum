@@ -1,6 +1,8 @@
 import sys
 import os
 import yfinance as yf
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 if len(sys.argv) < 2:

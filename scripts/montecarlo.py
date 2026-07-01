@@ -4,6 +4,8 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import yfinance as yf
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.stats import norm, t
 
