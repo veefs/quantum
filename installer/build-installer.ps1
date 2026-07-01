@@ -141,9 +141,30 @@ if (Test-Path (Join-Path $StageDir "python.exe")) {
 # --- 5. Create dist/ ----------------------------------------------------------
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot "dist") | Out-Null
 
-# --- 6. Compile Inno Setup installer ------------------------------------------
+# --- 6. Ensure Inno Setup is installed ---------------------------------------
 $IsccPath = Join-Path $InnoSetupDir "ISCC.exe"
-Require-File $IsccPath "Install Inno Setup 6 from https://jrsoftware.org/isinfo.php or pass -InnoSetupDir."
+if (-not (Test-Path $IsccPath)) {
+    Write-Host ""
+    Write-Host "Inno Setup not found - downloading and installing silently..." -ForegroundColor Cyan
+
+    $InnoVersion    = "6.3.3"
+    $InnoInstaller  = Join-Path $env:TEMP "innosetup-$InnoVersion.exe"
+    $InnoUrl        = "https://files.jrsoftware.org/is/6/innosetup-$InnoVersion.exe"
+
+    Invoke-WebRequest -Uri $InnoUrl -OutFile $InnoInstaller -UseBasicParsing
+    Write-Host "  Installing Inno Setup $InnoVersion (a UAC prompt may appear)..."
+    Start-Process -FilePath $InnoInstaller `
+        -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" `
+        -Wait
+    Remove-Item $InnoInstaller -Force
+
+    if (-not (Test-Path $IsccPath)) {
+        Write-Error "Inno Setup installation failed or was installed to a non-default path. Pass -InnoSetupDir."
+    }
+    Write-Host "  Inno Setup $InnoVersion installed." -ForegroundColor Green
+} else {
+    Write-Host "OK  ISCC.exe" -ForegroundColor Green
+}
 
 $IssPath = Join-Path $ScriptDir "Quantum.iss"
 Require-File $IssPath "installer\Quantum.iss is missing."
