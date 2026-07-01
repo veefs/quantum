@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds dist\QuantumSetup.exe — a self-contained installer that bundles
+    Builds dist\QuantumSetup.exe - a self-contained installer that bundles
     Python, all required packages, and Qt DLLs. Users need nothing pre-installed.
 
 .DESCRIPTION
@@ -37,9 +37,9 @@
 #>
 
 param(
-    [string]$QtDir          = "C:\Qt\6.11.1\mingw_64",
-    [string]$InnoSetupDir   = "C:\Program Files (x86)\Inno Setup 6",
-    [string]$PythonVersion  = "3.12.10",
+    [string]$QtDir         = "C:\Qt\6.11.1\mingw_64",
+    [string]$InnoSetupDir  = "C:\Program Files (x86)\Inno Setup 6",
+    [string]$PythonVersion = "3.12.10",
     [switch]$RebuildPython
 )
 
@@ -53,12 +53,12 @@ function Require-File([string]$Path, [string]$Hint) {
     if (-not (Test-Path $Path)) { Write-Error "$Path not found. $Hint" }
 }
 
-# ── 1. Verify compiled executable ────────────────────────────────────────────
+# --- 1. Verify compiled executable -------------------------------------------
 $ExePath = Join-Path $RepoRoot "build\main.exe"
 Require-File $ExePath "Run build.ps1 in the repo root first."
 Write-Host "OK  build\main.exe" -ForegroundColor Green
 
-# ── 2. Ensure Qt DLLs are at repo root ───────────────────────────────────────
+# --- 2. Ensure Qt DLLs are at repo root --------------------------------------
 foreach ($Dll in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")) {
     $Dest = Join-Path $RepoRoot $Dll
     if (-not (Test-Path $Dest)) {
@@ -74,7 +74,7 @@ foreach ($Dll in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")) {
     }
 }
 
-# ── 3. Ensure platforms\qwindows.dll is present ───────────────────────────────
+# --- 3. Ensure platforms\qwindows.dll is present -----------------------------
 $PlatformDest = Join-Path $RepoRoot "platforms\qwindows.dll"
 if (-not (Test-Path $PlatformDest)) {
     $PlatformSrc = Join-Path $QtDir "plugins\platforms\qwindows.dll"
@@ -89,21 +89,21 @@ if (-not (Test-Path $PlatformDest)) {
     Write-Host "OK  platforms\qwindows.dll" -ForegroundColor Green
 }
 
-# ── 4. Stage bundled Python ───────────────────────────────────────────────────
+# --- 4. Stage bundled Python --------------------------------------------------
 if ($RebuildPython -and (Test-Path $StageDir)) {
     Write-Host "Removing existing python_stage/ for rebuild..." -ForegroundColor Yellow
     Remove-Item $StageDir -Recurse -Force
 }
 
 if (Test-Path (Join-Path $StageDir "python.exe")) {
-    Write-Host "OK  python_stage\ (already built — pass -RebuildPython to refresh)" -ForegroundColor Green
+    Write-Host "OK  python_stage\ (already built; pass -RebuildPython to refresh)" -ForegroundColor Green
 } else {
     Write-Host ""
     Write-Host "Staging bundled Python $PythonVersion..." -ForegroundColor Cyan
 
-    $ZipName  = "python-$PythonVersion-embed-amd64.zip"
-    $ZipUrl   = "https://www.python.org/ftp/python/$PythonVersion/$ZipName"
-    $ZipPath  = Join-Path $env:TEMP $ZipName
+    $ZipName    = "python-$PythonVersion-embed-amd64.zip"
+    $ZipUrl     = "https://www.python.org/ftp/python/$PythonVersion/$ZipName"
+    $ZipPath    = Join-Path $env:TEMP $ZipName
     $GetPipPath = Join-Path $env:TEMP "get-pip.py"
 
     Write-Host "  Downloading $ZipName..."
@@ -138,10 +138,10 @@ if (Test-Path (Join-Path $StageDir "python.exe")) {
     Write-Host "  Python stage complete." -ForegroundColor Green
 }
 
-# ── 5. Create dist/ ───────────────────────────────────────────────────────────
+# --- 5. Create dist/ ----------------------------------------------------------
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot "dist") | Out-Null
 
-# ── 6. Compile Inno Setup installer ──────────────────────────────────────────
+# --- 6. Compile Inno Setup installer ------------------------------------------
 $IsccPath = Join-Path $InnoSetupDir "ISCC.exe"
 Require-File $IsccPath "Install Inno Setup 6 from https://jrsoftware.org/isinfo.php or pass -InnoSetupDir."
 
@@ -153,7 +153,7 @@ Write-Host "Compiling installer..." -ForegroundColor Cyan
 & $IsccPath $IssPath
 if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup compilation failed (exit $LASTEXITCODE)." }
 
-# ── 7. Report ─────────────────────────────────────────────────────────────────
+# --- 7. Report ----------------------------------------------------------------
 $OutputExe = Join-Path $RepoRoot "dist\QuantumSetup.exe"
 if (Test-Path $OutputExe) {
     $SizeMB = [math]::Round((Get-Item $OutputExe).Length / 1MB, 1)
