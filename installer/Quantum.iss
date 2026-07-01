@@ -44,6 +44,11 @@ Source: "..\Qt6Core.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\Qt6Gui.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\Qt6Widgets.dll"; DestDir: "{app}"; Flags: ignoreversion
 
+; MinGW runtime DLLs (required by any exe compiled with MinGW g++)
+Source: "..\libgcc_s_seh-1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\libstdc++-6.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\libwinpthread-1.dll"; DestDir: "{app}"; Flags: ignoreversion
+
 ; Qt Windows platform plugin (must live at platforms\qwindows.dll relative to main.exe)
 Source: "..\platforms\qwindows.dll"; DestDir: "{app}\platforms"; Flags: ignoreversion
 

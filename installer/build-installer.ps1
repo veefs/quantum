@@ -19,6 +19,7 @@
 
 param(
     [string]$QtDir         = "C:\Qt\6.11.1\mingw_64",
+    [string]$MinGWDir      = "C:\Qt\Tools\mingw1310_64\bin",
     [string]$PythonVersion = "3.12.10",
     [switch]$RebuildPython
 )
@@ -71,7 +72,23 @@ foreach ($Dll in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")) {
     }
 }
 
-# --- 3. Ensure platforms\qwindows.dll is present -----------------------------
+# --- 3. Ensure MinGW runtime DLLs are at repo root ---------------------------
+foreach ($Dll in @("libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll")) {
+    $Dest = Join-Path $RepoRoot $Dll
+    if (-not (Test-Path $Dest)) {
+        $Src = Join-Path $MinGWDir $Dll
+        if (Test-Path $Src) {
+            Copy-Item $Src $Dest -Force
+            Write-Host "Copied $Dll from MinGW" -ForegroundColor Yellow
+        } else {
+            Write-Error "$Dll not found in '$MinGWDir'. Pass -MinGWDir with your MinGW bin path."
+        }
+    } else {
+        Write-Host "OK  $Dll" -ForegroundColor Green
+    }
+}
+
+# --- 5. Ensure platforms\qwindows.dll is present -----------------------------
 $PlatformDest = Join-Path $RepoRoot "platforms\qwindows.dll"
 if (-not (Test-Path $PlatformDest)) {
     $PlatformSrc = Join-Path $QtDir "plugins\platforms\qwindows.dll"
@@ -86,7 +103,7 @@ if (-not (Test-Path $PlatformDest)) {
     Write-Host "OK  platforms\qwindows.dll" -ForegroundColor Green
 }
 
-# --- 4. Stage bundled Python --------------------------------------------------
+# --- 6. Stage bundled Python --------------------------------------------------
 if ($RebuildPython -and (Test-Path $StageDir)) {
     Write-Host "Removing existing python_stage/ for rebuild..." -ForegroundColor Yellow
     Remove-Item $StageDir -Recurse -Force
@@ -170,7 +187,8 @@ if (-not $IsccPath) {
 
         Write-Host "  Installing (UAC prompt will appear)..."
         Start-Process -FilePath $InnoInstaller `
-            -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+            -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" `
+            -Verb RunAs -Wait
         Remove-Item $InnoInstaller -Force
 
         $IsccPath = Find-Iscc
