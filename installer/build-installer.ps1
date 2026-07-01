@@ -52,7 +52,7 @@ function Find-Iscc {
 }
 
 # --- 1. Verify compiled executable -------------------------------------------
-$ExePath = Join-Path $RepoRoot "build\main.exe"
+$ExePath = Join-Path $RepoRoot "main.exe"
 Require-File $ExePath "Run build.ps1 in the repo root first."
 Write-Host "OK  build\main.exe" -ForegroundColor Green
 
