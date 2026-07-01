@@ -5,16 +5,19 @@
     Python, all required packages, and Qt DLLs. Users need nothing pre-installed.
 
 .PARAMETER QtDir
-    Qt MinGW 64-bit root. Only needed if platforms\qwindows.dll is missing.
+    Qt MinGW 64-bit root.
     Default: C:\Qt\6.11.1\mingw_64
 
+.PARAMETER MinGWDir
+    MinGW compiler bin directory (for libgcc/libstdc++/libwinpthread).
+    Default: C:\Qt\Tools\mingw1310_64\bin
+
 .PARAMETER PythonVersion
-    Version of the Python embeddable package to download.
+    Python embeddable package version to download.
     Default: 3.12.10
 
 .PARAMETER RebuildPython
-    Force re-download and re-install of the bundled Python even if
-    installer\python_stage\ already exists.
+    Force re-download and re-install of bundled Python.
 #>
 
 param(
@@ -26,15 +29,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot  = Split-Path -Parent $ScriptDir
-$StageDir  = Join-Path $ScriptDir "python_stage"
+$ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot    = Split-Path -Parent $ScriptDir
+$StageDir    = Join-Path $ScriptDir "python_stage"
+$DeployStage = Join-Path $ScriptDir "deploy_stage"
 
 function Require-File([string]$Path, [string]$Hint) {
     if (-not (Test-Path $Path)) { Write-Error "$Path not found. $Hint" }
 }
 
-# Locate ISCC.exe by checking every place Inno Setup ever installs to.
 function Find-Iscc {
     $candidates = @(
         "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
@@ -42,10 +45,7 @@ function Find-Iscc {
         "C:\Program Files\Inno Setup 6\ISCC.exe",
         "C:\Program Files\Inno Setup 7\ISCC.exe"
     )
-    foreach ($c in $candidates) {
-        if (Test-Path $c) { return $c }
-    }
-    # Also check if it ended up on PATH
+    foreach ($c in $candidates) { if (Test-Path $c) { return $c } }
     $cmd = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
     return $null
@@ -56,54 +56,33 @@ $ExePath = Join-Path $RepoRoot "build\main.exe"
 Require-File $ExePath "Run build.ps1 in the repo root first."
 Write-Host "OK  build\main.exe" -ForegroundColor Green
 
-# --- 2. Ensure Qt DLLs are at repo root --------------------------------------
-foreach ($Dll in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll")) {
-    $Dest = Join-Path $RepoRoot $Dll
-    if (-not (Test-Path $Dest)) {
-        $Src = Join-Path $RepoRoot "dlls\$Dll"
-        if (Test-Path $Src) {
-            Copy-Item $Src $Dest -Force
-            Write-Host "Copied $Dll from dlls/" -ForegroundColor Yellow
-        } else {
-            Write-Error "$Dll missing. Copy Qt DLLs to repo root or run build.ps1."
-        }
-    } else {
-        Write-Host "OK  $Dll" -ForegroundColor Green
-    }
-}
+# --- 2. Run windeployqt to collect all Qt dependencies -----------------------
+$WinDeployQt = Join-Path $QtDir "bin\windeployqt.exe"
+Require-File $WinDeployQt "windeployqt.exe not found. Check -QtDir."
 
-# --- 3. Ensure MinGW runtime DLLs are at repo root ---------------------------
+Write-Host "Running windeployqt..." -ForegroundColor Cyan
+if (Test-Path $DeployStage) { Remove-Item $DeployStage -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $DeployStage | Out-Null
+
+Copy-Item $ExePath $DeployStage -Force
+
+& $WinDeployQt --no-compiler-runtime --no-translations `
+    (Join-Path $DeployStage "main.exe")
+if ($LASTEXITCODE -ne 0) { Write-Error "windeployqt failed." }
+Write-Host "OK  windeployqt" -ForegroundColor Green
+
+# --- 3. Copy MinGW runtime DLLs (windeployqt skips these for MinGW) ----------
 foreach ($Dll in @("libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll")) {
-    $Dest = Join-Path $RepoRoot $Dll
-    if (-not (Test-Path $Dest)) {
-        $Src = Join-Path $MinGWDir $Dll
-        if (Test-Path $Src) {
-            Copy-Item $Src $Dest -Force
-            Write-Host "Copied $Dll from MinGW" -ForegroundColor Yellow
-        } else {
-            Write-Error "$Dll not found in '$MinGWDir'. Pass -MinGWDir with your MinGW bin path."
-        }
-    } else {
+    $Src = Join-Path $MinGWDir $Dll
+    if (Test-Path $Src) {
+        Copy-Item $Src $DeployStage -Force
         Write-Host "OK  $Dll" -ForegroundColor Green
-    }
-}
-
-# --- 5. Ensure platforms\qwindows.dll is present -----------------------------
-$PlatformDest = Join-Path $RepoRoot "platforms\qwindows.dll"
-if (-not (Test-Path $PlatformDest)) {
-    $PlatformSrc = Join-Path $QtDir "plugins\platforms\qwindows.dll"
-    if (Test-Path $PlatformSrc) {
-        New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot "platforms") | Out-Null
-        Copy-Item $PlatformSrc $PlatformDest -Force
-        Write-Host "Copied qwindows.dll from Qt" -ForegroundColor Yellow
     } else {
-        Write-Error "platforms\qwindows.dll not found. Pass -QtDir with your Qt path."
+        Write-Error "$Dll not found in '$MinGWDir'. Pass -MinGWDir with your MinGW bin path."
     }
-} else {
-    Write-Host "OK  platforms\qwindows.dll" -ForegroundColor Green
 }
 
-# --- 6. Stage bundled Python --------------------------------------------------
+# --- 4. Stage bundled Python --------------------------------------------------
 if ($RebuildPython -and (Test-Path $StageDir)) {
     Write-Host "Removing existing python_stage/ for rebuild..." -ForegroundColor Yellow
     Remove-Item $StageDir -Recurse -Force
@@ -127,7 +106,6 @@ if (Test-Path (Join-Path $StageDir "python.exe")) {
     New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
     Expand-Archive -Path $ZipPath -DestinationPath $StageDir -Force
 
-    # Enable pip: the embeddable package ships with 'import site' commented out.
     $PthFile = Get-ChildItem $StageDir -Filter "python*._pth" | Select-Object -First 1
     if (-not $PthFile) { Write-Error "Could not find python*._pth in $StageDir" }
     (Get-Content $PthFile.FullName) -replace '#import site', 'import site' | Set-Content $PthFile.FullName
@@ -164,7 +142,6 @@ if (-not $IsccPath) {
 
     $installed = $false
 
-    # Try winget first (built into Windows 10/11 - no UAC needed)
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "  Using winget..."
         winget install --id JRSoftware.InnoSetup -e --silent `
@@ -173,7 +150,6 @@ if (-not $IsccPath) {
         if ($IsccPath) { $installed = $true }
     }
 
-    # Fall back to downloading a stable release from GitHub
     if (-not $installed) {
         Write-Host "  Fetching stable release from GitHub..."
         $releases = Invoke-RestMethod "https://api.github.com/repos/jrsoftware/issrc/releases" -UseBasicParsing
@@ -196,9 +172,8 @@ if (-not $IsccPath) {
     }
 
     if (-not $installed -or -not $IsccPath) {
-        Write-Error "Could not locate ISCC.exe after installation. Install Inno Setup manually from https://jrsoftware.org/isinfo.php"
+        Write-Error "Could not locate ISCC.exe. Install Inno Setup manually from https://jrsoftware.org/isinfo.php"
     }
-
     Write-Host "  Inno Setup ready: $IsccPath" -ForegroundColor Green
 } else {
     Write-Host "OK  $IsccPath" -ForegroundColor Green
