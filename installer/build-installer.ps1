@@ -4,22 +4,9 @@
     Builds dist\QuantumSetup.exe - a self-contained installer that bundles
     Python, all required packages, and Qt DLLs. Users need nothing pre-installed.
 
-.DESCRIPTION
-    Steps:
-      1. Verify build\main.exe exists.
-      2. Ensure Qt DLLs and platforms\qwindows.dll are in place.
-      3. Download the Python embeddable package and install yfinance, matplotlib,
-         pandas, numpy, and scipy into installer\python_stage\.
-      4. Compile installer\Quantum.iss with Inno Setup.
-      5. Write dist\QuantumSetup.exe.
-
 .PARAMETER QtDir
     Qt MinGW 64-bit root. Only needed if platforms\qwindows.dll is missing.
     Default: C:\Qt\6.11.1\mingw_64
-
-.PARAMETER InnoSetupDir
-    Directory containing ISCC.exe.
-    Default: C:\Program Files (x86)\Inno Setup 6
 
 .PARAMETER PythonVersion
     Version of the Python embeddable package to download.
@@ -28,17 +15,10 @@
 .PARAMETER RebuildPython
     Force re-download and re-install of the bundled Python even if
     installer\python_stage\ already exists.
-
-.EXAMPLE
-    .\installer\build-installer.ps1
-
-.EXAMPLE
-    .\installer\build-installer.ps1 -RebuildPython -PythonVersion "3.12.10"
 #>
 
 param(
     [string]$QtDir         = "C:\Qt\6.11.1\mingw_64",
-    [string]$InnoSetupDir  = "C:\Program Files (x86)\Inno Setup 6",
     [string]$PythonVersion = "3.12.10",
     [switch]$RebuildPython
 )
@@ -51,6 +31,23 @@ $StageDir  = Join-Path $ScriptDir "python_stage"
 
 function Require-File([string]$Path, [string]$Hint) {
     if (-not (Test-Path $Path)) { Write-Error "$Path not found. $Hint" }
+}
+
+# Locate ISCC.exe by checking every place Inno Setup ever installs to.
+function Find-Iscc {
+    $candidates = @(
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files (x86)\Inno Setup 7\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 7\ISCC.exe"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { return $c }
+    }
+    # Also check if it ended up on PATH
+    $cmd = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
 }
 
 # --- 1. Verify compiled executable -------------------------------------------
@@ -129,7 +126,7 @@ if (Test-Path (Join-Path $StageDir "python.exe")) {
     if ($LASTEXITCODE -ne 0) { Write-Error "pip installation failed." }
 
     $PipExe = Join-Path $StageDir "Scripts\pip.exe"
-    Require-File $PipExe "pip.exe not found after installation. Something went wrong."
+    Require-File $PipExe "pip.exe not found after installation."
 
     Write-Host "  Installing Python packages (this may take a few minutes)..."
     & $PipExe install yfinance matplotlib pandas numpy scipy --no-warn-script-location
@@ -141,34 +138,55 @@ if (Test-Path (Join-Path $StageDir "python.exe")) {
 # --- 5. Create dist/ ----------------------------------------------------------
 New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot "dist") | Out-Null
 
-# --- 6. Ensure Inno Setup is installed ---------------------------------------
-$IsccPath = Join-Path $InnoSetupDir "ISCC.exe"
-if (-not (Test-Path $IsccPath)) {
+# --- 6. Ensure Inno Setup is installed ----------------------------------------
+$IsccPath = Find-Iscc
+
+if (-not $IsccPath) {
     Write-Host ""
-    Write-Host "Inno Setup not found - downloading latest release..." -ForegroundColor Cyan
+    Write-Host "Inno Setup not found - installing..." -ForegroundColor Cyan
 
-    $release     = Invoke-RestMethod "https://api.github.com/repos/jrsoftware/issrc/releases/latest" -UseBasicParsing
-    $asset       = $release.assets | Where-Object { $_.name -match "^innosetup-.*\.exe$" } | Select-Object -First 1
-    if (-not $asset) { Write-Error "Could not find Inno Setup installer in GitHub release assets." }
+    $installed = $false
 
-    $InnoInstaller = Join-Path $env:TEMP $asset.name
-    Write-Host "  Downloading $($asset.name)..."
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $InnoInstaller -UseBasicParsing
-
-    Write-Host "  Installing (a UAC prompt may appear)..."
-    Start-Process -FilePath $InnoInstaller `
-        -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" `
-        -Wait
-    Remove-Item $InnoInstaller -Force
-
-    if (-not (Test-Path $IsccPath)) {
-        Write-Error "Inno Setup installed but ISCC.exe not found at default path. Pass -InnoSetupDir if you used a custom install location."
+    # Try winget first (built into Windows 10/11 - no UAC needed)
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "  Using winget..."
+        winget install --id JRSoftware.InnoSetup -e --silent `
+            --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+        $IsccPath = Find-Iscc
+        if ($IsccPath) { $installed = $true }
     }
-    Write-Host "  Inno Setup installed." -ForegroundColor Green
+
+    # Fall back to downloading a stable release from GitHub
+    if (-not $installed) {
+        Write-Host "  Fetching stable release from GitHub..."
+        $releases = Invoke-RestMethod "https://api.github.com/repos/jrsoftware/issrc/releases" -UseBasicParsing
+        $stable   = $releases | Where-Object { -not $_.prerelease -and -not $_.draft } | Select-Object -First 1
+        $asset    = $stable.assets | Where-Object { $_.name -match "^innosetup-.*\.exe$" } | Select-Object -First 1
+        if (-not $asset) { Write-Error "Could not find a stable Inno Setup release on GitHub." }
+
+        $InnoInstaller = Join-Path $env:TEMP $asset.name
+        Write-Host "  Downloading $($asset.name)..."
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $InnoInstaller -UseBasicParsing
+
+        Write-Host "  Installing (UAC prompt will appear)..."
+        Start-Process -FilePath $InnoInstaller `
+            -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+        Remove-Item $InnoInstaller -Force
+
+        $IsccPath = Find-Iscc
+        if ($IsccPath) { $installed = $true }
+    }
+
+    if (-not $installed -or -not $IsccPath) {
+        Write-Error "Could not locate ISCC.exe after installation. Install Inno Setup manually from https://jrsoftware.org/isinfo.php"
+    }
+
+    Write-Host "  Inno Setup ready: $IsccPath" -ForegroundColor Green
 } else {
-    Write-Host "OK  ISCC.exe" -ForegroundColor Green
+    Write-Host "OK  $IsccPath" -ForegroundColor Green
 }
 
+# --- 7. Compile installer -----------------------------------------------------
 $IssPath = Join-Path $ScriptDir "Quantum.iss"
 Require-File $IssPath "installer\Quantum.iss is missing."
 
@@ -177,7 +195,7 @@ Write-Host "Compiling installer..." -ForegroundColor Cyan
 & $IsccPath $IssPath
 if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup compilation failed (exit $LASTEXITCODE)." }
 
-# --- 7. Report ----------------------------------------------------------------
+# --- 8. Report ----------------------------------------------------------------
 $OutputExe = Join-Path $RepoRoot "dist\QuantumSetup.exe"
 if (Test-Path $OutputExe) {
     $SizeMB = [math]::Round((Get-Item $OutputExe).Length / 1MB, 1)
