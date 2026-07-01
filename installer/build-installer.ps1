@@ -145,23 +145,26 @@ New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot "dist") | Out-Nul
 $IsccPath = Join-Path $InnoSetupDir "ISCC.exe"
 if (-not (Test-Path $IsccPath)) {
     Write-Host ""
-    Write-Host "Inno Setup not found - downloading and installing silently..." -ForegroundColor Cyan
+    Write-Host "Inno Setup not found - downloading latest release..." -ForegroundColor Cyan
 
-    $InnoVersion    = "6.3.3"
-    $InnoInstaller  = Join-Path $env:TEMP "innosetup-$InnoVersion.exe"
-    $InnoUrl        = "https://files.jrsoftware.org/is/6/innosetup-$InnoVersion.exe"
+    $release     = Invoke-RestMethod "https://api.github.com/repos/jrsoftware/issrc/releases/latest" -UseBasicParsing
+    $asset       = $release.assets | Where-Object { $_.name -match "^innosetup-.*\.exe$" } | Select-Object -First 1
+    if (-not $asset) { Write-Error "Could not find Inno Setup installer in GitHub release assets." }
 
-    Invoke-WebRequest -Uri $InnoUrl -OutFile $InnoInstaller -UseBasicParsing
-    Write-Host "  Installing Inno Setup $InnoVersion (a UAC prompt may appear)..."
+    $InnoInstaller = Join-Path $env:TEMP $asset.name
+    Write-Host "  Downloading $($asset.name)..."
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $InnoInstaller -UseBasicParsing
+
+    Write-Host "  Installing (a UAC prompt may appear)..."
     Start-Process -FilePath $InnoInstaller `
         -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" `
         -Wait
     Remove-Item $InnoInstaller -Force
 
     if (-not (Test-Path $IsccPath)) {
-        Write-Error "Inno Setup installation failed or was installed to a non-default path. Pass -InnoSetupDir."
+        Write-Error "Inno Setup installed but ISCC.exe not found at default path. Pass -InnoSetupDir if you used a custom install location."
     }
-    Write-Host "  Inno Setup $InnoVersion installed." -ForegroundColor Green
+    Write-Host "  Inno Setup installed." -ForegroundColor Green
 } else {
     Write-Host "OK  ISCC.exe" -ForegroundColor Green
 }
